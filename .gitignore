@@ -1,0 +1,9 @@
+# Deployment ignores
+downloads/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.vscode/
+.history/
