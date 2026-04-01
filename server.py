@@ -10,6 +10,13 @@ import yt_dlp
 app = Flask(__name__)
 CORS(app)
 
+@app.after_request
+def apply_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
 basedir = os.path.dirname(os.path.abspath(__file__))
 DOWNLOAD_DIR = os.path.join(basedir, 'downloads')
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -26,14 +33,14 @@ def cleanup_daemon():
                 filepath = os.path.join(DOWNLOAD_DIR, filename)
                 if os.path.isfile(filepath):
                     # Check file modification time
-                    if os.stat(filepath).st_mtime < now - 2 * 3600:
+                    if os.stat(filepath).st_mtime < now - 24 * 3600:
                         os.remove(filepath)
                         print(f"Auto-cleaned: {filename}")
             # Also clean up old tasks from memory
             to_delete = []
             for t_id, t_info in tasks.items():
                 if t_info.get('status') in ('completed', 'error'):
-                    if t_info.get('timestamp', 0) < now - 2 * 3600:
+                    if t_info.get('timestamp', 0) < now - 24 * 3600:
                         to_delete.append(t_id)
             for t_id in to_delete:
                 del tasks[t_id]
@@ -64,6 +71,10 @@ def get_info():
     url = request.args.get('url')
     if not url:
         return jsonify({'error': 'URL is required'}), 400
+        
+    lower_url = url.lower()
+    if 'youtube.com' in lower_url or 'youtu.be' in lower_url:
+        return jsonify({'error': 'YouTube downloads are not supported. Please try a different platform.'}), 400
 
     opts = get_base_opts()
     opts['extract_flat'] = False
