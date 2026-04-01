@@ -4,11 +4,9 @@ import uuid
 import threading
 import glob
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
 import yt_dlp
 
 app = Flask(__name__)
-CORS(app)
 
 @app.after_request
 def apply_security_headers(response):
@@ -59,7 +57,8 @@ def get_base_opts():
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
-        'noplaylist': True
+        'noplaylist': True,
+        'max_filesize': 2 * 1024 * 1024 * 1024  # 2 GB Limit
     }
 
 @app.route('/')
@@ -174,6 +173,11 @@ def download_worker(task_id, url, dl_type, quality):
 
 @app.route('/api/download', methods=['POST'])
 def start_download():
+    # Security: Limit maximum active downloads (DOS Attack Protection)
+    active_count = sum(1 for t in tasks.values() if t.get('status') in ('queued', 'starting', 'downloading', 'processing'))
+    if active_count >= 5:
+        return jsonify({'error': 'Anti-Abuse System: Server is handling too many downloads. Please wait a moment.'}), 429
+
     data = request.json
     if not data or not data.get('url'):
         return jsonify({'error': 'URL is required'}), 400

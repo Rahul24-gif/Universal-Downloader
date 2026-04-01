@@ -484,6 +484,13 @@
     const elRecentList = document.getElementById('recent-list');
 
     // Utility
+    function escapeHTML(str) {
+        if (!str) return '';
+        return str.toString().replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[tag]));
+    }
+
     function formatTime(seconds) {
         if (!seconds) return 'N/A';
         const h = Math.floor(seconds / 3600);
@@ -610,9 +617,12 @@
 
                 const li = document.createElement('li');
                 li.className = 'queue-item';
+                
+                const safeTitle = escapeHTML(task.title);
+                
                 li.innerHTML = `
                     <div class="queue-header">
-                        <div class="queue-title" title="${task.title}">${task.title}</div>
+                        <div class="queue-title" title="${safeTitle}">${safeTitle}</div>
                         <div class="queue-meta">
                             <span class="badge" style="background: rgba(255,255,255,0.1); color: #fff;">${task.type.toUpperCase()}</span>
                         </div>
@@ -643,10 +653,16 @@
             state.recents.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'recent-item';
+                const safeRecentTitle = escapeHTML(item.title);
                 li.innerHTML = `
-                    <div class="recent-title">${item.title}</div>
-                    <a class="recent-link" href="#" onclick="state.url='${item.url}'; render(); return false;">Redownload</a>
+                    <div class="recent-title" title="${safeRecentTitle}">${safeRecentTitle}</div>
+                    <a class="recent-link" href="#">Redownload</a>
                 `;
+                li.querySelector('.recent-link').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    state.url = item.url;
+                    render();
+                });
                 elRecentList.appendChild(li);
             });
         } else {
